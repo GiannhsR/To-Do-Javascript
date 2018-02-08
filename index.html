@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta author="Iwannhs Rakitzopoulos E14161">
+	
+    <title>My App</title>
+	
+	<script src="https://www.gstatic.com/firebasejs/3.8.0/firebase.js"></script>
+	<script>
+	  // Initialize Firebase
+	  var config = {
+		apiKey: "XXXXXXXXXXXXXXXXXXXXXXX",
+		authDomain: "project1webservices.firebaseapp.com",
+		databaseURL: "https://project1webservices.firebaseio.com",
+		projectId: "project1webservices",
+		storageBucket: "project1webservices.appspot.com",
+		messagingSenderId: "849829576693"
+	  };
+		firebase.initializeApp(config);
+	  
+		// Get a reference to the database service
+		var database = firebase.database();
+	</script>
+	
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	
+	<!-- jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+	<!-- jQuery UI-->
+	<!--Χρησιμοποιούμε το JQueryUI για το Datepicker που παρέχει -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+	
+    <!-- Custom Fonts -->
+    <link href="vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
+
+    <!-- Theme CSS -->
+    <link href="css/grayscale.min.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+	 <style type="text/css">	
+		.ui-datepicker {
+			background: #808080;
+			border: 1px solid #FDF5E6;
+			color: 	red ;
+		}
+		.activity{
+			color: black;
+		}
+	</style>
+	<script>
+		$(document).ready(function(){
+			//Css changes via JQuery
+			$('#usernameLogin').css({'color' : 'black'}); <!-- User input has black colour -->
+			$('#passLogin').css({'color' : 'black'}); 
+			$('#usernameRegister').css({'color' : 'black'});
+			$('#passRegister').css({'color' : 'black'}); 
+			$('#firstname').css({'color' : 'black'});
+			$('#lastname').css({'color' : 'black'});
+			$('#datepicker').css({'color' : 'black'});
+			
+			$( "#datepicker" ).datepicker({ <!-- Using JQuery UI to restrict available dates -->
+				minDate: "-50Y", 			<!-- Using JQuery UI to allow user to use specific Date -->
+				maxDate: "-6Y",
+				changeMonth:true,
+				changeYear:true
+			});
+			
+			//Η μέθοδος writeUserData(userId,userName,password,firstName,lastName,dateOfBirth)
+			//χρησιμοποιείται για να γράψουμε στη βάση δεδομένων
+			//και να αποθηκεύσουμε πληροφορία για κάθε χρήστη
+			//αυτό γίνεται παίρνοντας το currentUser.uid που ειναι ΜΟΝΑΔΙΚΟ για κάθε χρήστη κατά την κλήση της μεθόδου
+			//καλείται κατά το register,μία φορά
+			function writeUserData(userId,userName,password,firstName,lastName,dateOfBirth) {
+				firebase.database().ref('users/' + userId).set({
+					username : userName,
+					pass : password,
+					first_name : firstName,
+					last_name : lastName,
+					date_of_birth : dateOfBirth,
+				});
+			}
+			
+			<!-- Checking if there is a User signed in or not -->
+			<!-- observing -->
+			firebase.auth().onAuthStateChanged(function(user) {
+			  if (user) {
+				var userId = firebase.auth().currentUser.uid;//Χρησιμοποιούμε το userId για να κάνουνε authenticate ΚΑΘΕ χρήστη
+				var activityListRef = firebase.database().ref('users/' + userId + '/list/'); //Αναφορά στο path που θέλουμε να σώσουμε τις δραστηριότητες του χρήστη
+				//User is signed in.
+				$('.custom-when-signed-in').css({'display' : 'none'});
+				$('.custom-when-not-signed-in').css({'display' : 'block'});		
+				//Οι παρακάτω γραμμές αλλάζουν τον τρόπο που λειτουργεί το animate με τη χρήση του βέλους
+				//<i class="fa fa-angle-double-down animated"></i> 
+				//όταν πλέον δε δείχνει στο #login section αλλά στο #core section
+				//Δηλαδή αλλάζει η λειτουργία του όταν κάποιος είναι signed in
+				$('a#toCoreSection').css({'display' : 'inline'}); 
+				$('a#toCoreSection').attr('href','#core');
+				
+				//Στιγμιότυπο της βάσης δεδομένων
+				//Παίρνουμε το username του χρήστη για να το προβάλουμε στο UI της εφαρμογής
+				return firebase.database().ref('/users/' + userId).once('value').then(function(snapshot) {
+					var username = snapshot.val().username;
+					$('#whoIsSigned').append(username);
+					$('#whoListH3').prepend(username);
+					console.log("Person singed in is: " + username + "\nUser obj is : " + user );
+					
+					//Mε το click του button#addActivityBtn προσθέτουμε ένα html element
+					//ώστε ο χρήστης να μπορεί να γράψει την δραστηριόητητα
+					//που θέλει να αποθηκεύσει
+					$('button#addActivityBtn').click(function(){
+						var txt = $('<br><input type="text" class="form-control activity" placeholder="Your activity">').text("");
+						$('#myEmptyDiv').append(txt);
+					});
+					
+					//Με το click του button#submitBtn ο χρήστης αποστέλει την φόρμα
+					//Στη βάση μας ενημερώνεται η λίστα δραστηριοτήτων του χρήστη
+					//Για κάθε .activity παίρνουμε το .val()
+					//Και κάνουμε εγγραφή στη βάση
+					$('button#submitBtn').click(function(){
+						$('.activity').each(function(){
+				
+							var activityToSubmit = $(this).val();
+							
+							if( $(this).attr("name") === "added"){
+								//Η δραστηριότητα έχει ήδη γραφτεί στη βάση
+								//Δεν χρειάζεται να γίνει ξάνα η εγγραφή της
+							}else{
+								//Αν η δραστηριότητα δέν εχει έχει γραφτεί στη βάση
+								//Τότε την κάνουμε push() δηλαδή append στο node list
+								//της βάσης μας
+								var newActivityRef = activityListRef.push();
+									newActivityRef.set({
+										activity : activityToSubmit
+								});
+							}
+						});
+					});	
+					
+					//Loop through users in order with the forEach() method. The callback
+					//provided to forEach() will be called synchronously with a DataSnapshot
+					//for each  child:
+					var query = activityListRef;
+					query.once("value").then(function(snapshot) {
+						snapshot.forEach(function(childSnapshot) {
+							
+							var key = childSnapshot.key;
+
+							//childData will be the actual contents of the child
+							var childData = childSnapshot.val().activity;
+							
+							//Create HTML element to display user storedActivities/past activities
+							var myActivity = $('<input type="text" class="form-control activity text-center" placeholder="Your activity">').text(childData);
+							var myButton = $('<button type="button" class="btn-small btn-danger">Remove activity</button><br>');
+							
+							myActivity.attr('readonly',true);//Ο χρήστης δε μπορεί να αλλάξει το περιεχόμενο
+							myActivity.css({'background-color' : '#737373' });
+							
+							$('#myEmptyDiv').append(myActivity.val(childData));//Πρoσθήκη html element
+							$('#myEmptyDiv').append(myButton);//Προσθήκη html element 
+							
+							//Επισττρέφοντας τα δεδομένα της βάσης μας
+							//Προσθέτουμε και το attribute name = added
+							//Έτσι ώστε να μην υπάρχουν διπλοεγγραφές
+							//κατά την αποστολή της φόρμας
+							//Ο έλεγχος γίνεται κατά το submit
+							myActivity.attr("name", "added");
+							myButton.attr("name", key);
+							
+							//Με το πάτημα του myButton
+							//Διαγράφουμε από τη βάση μας
+							//Μια συγκεκριμένη δραστηριότητα
+							//Η δραστηριότητα που διαγράφεται είναι element
+							//prev(".activity") του myButton δηλαδή το προηγούμενο .activity sibling του myButton
+							$(myButton).click(function(){
+								var ref = firebase.database().ref('users/' + userId + '/list/' + $(this).attr("name"));
+									ref.set({
+										activity : null
+									});
+								alert("Activitiy removed");//Alert user
+								$(this).prev(".activity").css({'display' : "none"});
+								$(this).css({'display' : "none"});
+							});
+							//Για την διαγραφή
+							//Παίρνουμε το attribute name του myButton που εκεί έχουμε αποθηκεύσει το path κάθε activity
+							//από το var key = childSnapshot.key;
+							//και κάνουμε activity : null
+						});
+					});	
+				});
+			  }else{
+				// No user is signed in.
+				console.log("No one is singed in.\nUser obj is : " + user );
+				$('.custom-when-not-signed-in').css({'display' : 'none'});
+			  }
+			});<!-- END OBSERVERVING -->
+			
+			//Με το click του button#register
+			//Ο χρήστης μπορεί να κάνει Register/Εγγραφή
+			//Αφού πρώτα συμπληρώσει σωστά τα στοιχεία που χρειάζονται 
+			$('button#register').click(function(){ 			
+				var username = $('#usernameRegister').val();
+				var password = $('#passRegister').val();
+				var first_name = $('#firstname').val();
+				var last_name = $('#lastname').val();
+				var date_of_birth = $("#datepicker").datepicker().val();
+				
+				//Ο χρήστης που κάνει Register κάνει ΑΜΈΣΩΣ και Log in
+				//Όταν τελειώσει το Register
+				//Αποθηκεύονται στη βάση οι αντίστοιχες πληροφορίες που θέλουμε
+				//Π.χ όνομα,ημ/νια γέννησης
+				firebase.auth().createUserWithEmailAndPassword(username, password).then(function(user) {
+					var user = firebase.auth().currentUser;
+					var uid = user.uid;		
+					writeUserData(uid,username,password,first_name,last_name,date_of_birth);
+					console.log("Successful registration with uid : " + uid );
+				},function(error) {
+					//Handle Errors here.
+					//If known error happens
+					//Alert the user 
+					var errorCode = error.code;
+					var errorMessage = error.message;
+					console.log(errorCode + " " +errorMessage);
+					 if (errorCode == 'auth/weak-password') {
+						alert('The password is too weak.');
+					}
+					 if (errorCode == 'auth/invalid-email') {
+						alert('Invaldid username.');
+					}
+					if (errorCode == 'auth/email-already-in-use') {
+						alert('Invaldid e-mail/username already in use.');
+					}
+				});
+			});
+			
+			//Με το click του #loginButton
+			//Ο χρήστης κάνει log in / Σύνδεση
+			//Αφού πρώτα βάλει έγκυρα τα στοιχεία του λογαριασμού του
+			$("#loginButton").click(function(){
+				var username = $("#usernameLogin").val();
+				var password = $("#passLogin").val();
+				firebase.auth().signInWithEmailAndPassword(username,password).then(function(user){
+					alert('Successful login');
+				},function(error){
+					//Handle errors here
+					var errorCode = error.code;
+					var errorMessage = error.message;
+					console.log(errorCode + " " +errorMessage);
+					if (errorCode == 'auth/wrong-password'){
+						alert('The password is invalid or the user does not have a password.');
+					}
+					if (errorCode == 'auth/invalid-email'){
+						alert('Invaldid username/e-mail is badly formatted.');
+					}
+					if (errorCode == 'auth/too-many-requests'){
+						alert('We have blocked all requests from this device due to unusual activity. Try again later.');
+					}
+					if (errorCode == 'auth/user-not-found'){
+						alert('There is no user record corresponding to this identifier. The user may have been deleted.');
+					}
+				});
+			});
+			
+			//Με το click του a#signout
+			//Ο χρήστης κάνει signout / Αποσύνδεση
+			$("a#signout").click(function(){
+				firebase.auth().signOut();
+				console.log("User has signed out");
+				alert('You signed out');
+			});
+	});
+	</script>
+	
+</head>
+
+<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-custom navbar-fixed-top" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-main-collapse">
+                    Menu <i class="fa fa-bars"></i>
+                </button>
+                <a class="navbar-brand page-scroll" href="#page-top">
+                    <i class="fa fa-play-circle"></i> <span class="light">My</span> App
+                </a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse navbar-right navbar-main-collapse">
+                <ul class="nav navbar-nav">
+                    <!-- Hidden li included to remove active class from about link when scrolled up past about section -->
+                    <li class="hidden">
+                        <a href="#page-top"></a>
+                    </li>
+					<li>
+						<a id="whoIsSigned" class="custom-when-not-signed-in" >You are signed in as:</a>
+					</li>
+					<li>
+						<a class="page-scroll custom-when-not-signed-in" href="#core">Core App</a>
+						<!-- Η class .custom-when-not-signed-in χρησιμοποιείται
+						-- για τα στοιχεία που ΔΕΝ θέλουμε να εμφανίζονται 
+						-- όταν ΚΑΝΕΝΑΣ χρήστης ΔΕΝ είναι συνδεδεμένος -->
+					</li>
+                    <li>
+                        <a class="page-scroll custom-when-signed-in" href="#login">Login</a>
+						<!-- Η class .custom-when-signed-in χρησιμοποιείται
+						-- για τα στοιχεία που ΔΕΝ θέλουμε να εμφανίζονται 
+						-- όταν ΥΠΑΡΧΕΙ χρήστης συνδεδεμένος -->
+					</li>
+                    <li>
+                        <a class="page-scroll custom-when-signed-in" href="#register">Register</a>
+                    </li>
+                    <li>
+                        <a class="page-scroll" href="#contact">Contact</a>
+                    </li>
+					<li>
+						<a class="custom-when-not-signed-in" href="" id="signout">Sign out</a>
+					</li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <!-- Intro Header -->
+    <header class="intro">
+        <div class="intro-body">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-8 col-md-offset-2">
+                        <h1 class="brand-heading">My App</h1>
+                        <p class="intro-text">
+							Με αυτή την εφαρμογή ποτέ δεν θα χάνετε το πρόγραμμα σας!
+							Εύκολη εισαγωγή/διαγραφή για τις δραστηριότητές σας.
+						</p>
+                        <a id="toCoreSection" href="#login" class="btn btn-circle page-scroll custom-when-signed-in">
+                            <i class="fa fa-angle-double-down animated"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+	
+	<!-- Core Section -->
+	<!-- By default this section is	NOT displayed -->
+	<!-- A user has to be signed in to be displayed -->
+    <section id="core" class="container content-section	text-center custom-when-not-signed-in">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 ">
+					<h2>Διαχείρηση δραστηριοτήτων</h2>
+					<h3 id="whoListH3"> to do List</h3>
+					<button id="addActivityBtn" type="button" class="btn btn-primary">Add activity</button>
+					<form method="post"><!--Post method για να μην φαίνονται δεδομένα στο URL -->
+						<div class="form-group" id="myEmptyDiv">
+						</div>
+						<button id="submitBtn" type="submit" class="btn btn-default">Remember activities</button>
+					</form>
+            </div>
+        </div>
+    </section>
+	
+    <!-- Login Section -->
+	<!-- By default this section is displayed -->
+    <section id="login" class="container content-section text-center custom-when-signed-in">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2">
+				<h2>User log-in</h2>
+				<p>Username: <input type="text" id="usernameLogin" placeholder="Your Username"></p>
+				<p>Password: <input type="password" id="passLogin"></p>
+				<button type="button" id="loginButton" class="btn btn-primary">Log in</button>
+            </div>
+        </div>
+    </section>
+	
+    <!-- Register Section -->
+	<!-- By default this section is displayed -->
+    <section id="register" class="content-section text-center custom-when-signed-in">
+        <div class="download-section">
+            <div class="container">
+                <div class="col-lg-8 col-lg-offset-2">
+					<h2>Register</h2>
+					<p>Username: <input type="text" id="usernameRegister" placeholder="Your Username"></p>
+					<p>Password: <input type="password" id="passRegister"></p>
+					<p>First Name: <input type="text" id="firstname"></p>
+					<p>Last Name: <input type="text" id="lastname" ></p>
+					<p>Date of birth: <input type="text" id="datepicker"></p>
+					<button type="button" id="register"name="regButton" class="btn btn-primary">Register</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+	<!-- This section is always displayed -->
+    <section id="contact" class="container content-section text-center">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2">
+				<h2>Επικοινωνία</h2>
+				<p>Άν υπάρχει απορία σχετικά με την χρήση της Web εφαρμογής, παρακαλώ επικοινωνήστε μαζί μου.</p>
+                <p><a href="mailto:giannhsrak@hotmail.com@startbootstrap.com">Iwannhs Rakitzopoulos E14161</a>
+                </p>
+                <ul class="list-inline banner-social-buttons">
+				<p>Μπορείτε να ακολουθήσετε την εφαρμογή και στα social media</p>
+                    <li>
+                        <a href="#giannhsrakfacebook" class="btn btn-default btn-lg"><i class="fa fa-facebook fa-fw"></i><span class="network-name">Facebook</span></a>
+                    </li>
+					<li>
+                        <a href="#giannhsraktwitter" class="btn btn-default btn-lg"><i class="fa fa-twitter fa-fw"></i> <span class="network-name">Twitter</span></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Map Section -->
+    <div id="map"></div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container text-center">
+            <p>Copyright &copy;ΙΩΑΝΝΗΣ ΡΑΚΙΤΖΟΠΟΥΛΟΣ E14161 My App 2017</p>
+        </div>
+    </footer>
+	
+    <!-- Bootstrap Core JavaScript -->
+    <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
+	
+    <!-- Plugin JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCRngKslUGJTlibkQ3FkfTxj3Xss1UlZDA&sensor=false"></script>
+
+    <!-- Theme JavaScript -->
+    <script src="js/grayscale.min.js"></script>
+
+</body>
+
+</html>
